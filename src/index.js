@@ -5,30 +5,38 @@ import './css/styles.css';
 // Business Logic
 
 function getWeather(city) {
-  let request = new XMLHttpRequest();
-  const url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${process.env.API_KEY}`;
+  let promise = new Promise(function (resolve, reject) {
+    let request = new XMLHttpRequest();
+    const url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${process.env.API_KEY}`;
+    request.addEventListener("loadend", function () {
+      const response = JSON.parse(this.responseText);
+      if (this.status === 200) {
+        resolve(response);
+      } else {
+        reject({ request: this, apiResponse: response, city: city });
+      }
+    });
 
-  request.addEventListener("loadend", function() {
-    const response = JSON.parse(this.responseText);
-    if (this.status === 200) {
-      printElements(response, city);
-    } else {
-      printError(this, response, city);
-    }
+    request.open("GET", url, true);
+    request.send();
   });
-
-  request.open("GET", url, true);
-  request.send();
+  promise.then(function (weather) {
+    printElements(weather, city);
+  }, function (errorMessage) {
+    printError(errorMessage);
+  });
 }
 
 // UI Logic
 
 function printElements(apiResponse, city) {
-  document.querySelector('#showResponse').innerText = `The humidity in ${city} is ${apiResponse.main.humidity}%. 
+  document.querySelector('#showResponse').innerText = `The humidity in ${city} is ${apiResponse.main.humidity}%.
+
   The temperature in Kelvins is ${apiResponse.main.temp} degrees.`;
 }
 
-function printError(request, apiResponse, city) {
+function printError(error) {
+  const { request, apiResponse, city } = error;
   document.querySelector('#showResponse').innerText = `There was an error accessing the weather data for ${city}: ${request.status} ${request.statusText}: ${apiResponse.message}`;
 }
 
@@ -39,6 +47,6 @@ function handleFormSubmission(event) {
   getWeather(city);
 }
 
-window.addEventListener("load", function() {
+window.addEventListener("load", function () {
   document.querySelector('form').addEventListener("submit", handleFormSubmission);
 });
